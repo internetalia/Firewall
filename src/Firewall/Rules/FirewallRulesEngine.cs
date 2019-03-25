@@ -72,7 +72,7 @@ namespace Firewall
         /// <param name="allowedClientIPAddresses">The list of client ip addresses proxied through cloudflare</param>
         /// <param name="ipv4ListUrl">URL which returns a list of all Cloudflare IPv4 address ranges.</param>
         /// <param name="ipv6ListUrl">URL which returns a list of all Cloudflare IPv6 address ranges.</param>
-        public static IFirewallRule ExceptFromCloudflareAndClientIPs(
+        public static IFirewallRule ExceptFromCloudflareWithClientIPs(
             this IFirewallRule rule,
             List<IPAddress> allowedClientIPAddresses,
             string ipv4ListUrl = null,
