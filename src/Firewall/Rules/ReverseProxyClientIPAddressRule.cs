@@ -51,7 +51,7 @@ namespace Firewall
                     typeof(ReverseProxyClientIPAddressRule),
                        "Invalid reverse proxy header '{_reverseProxyHeader}' or unable to parse remote ip ",
                     _reverseProxyHeader);
-                return false;
+                return false || _nextRule.IsAllowed(context);
             }
             
         }

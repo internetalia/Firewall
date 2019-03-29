@@ -81,14 +81,28 @@ namespace Firewall
             var helper = new CloudflareHelper(new HttpClient());
             var (ips, cidrs) = helper.GetIPAddressRangesAsync(ipv4ListUrl, ipv6ListUrl).Result;
 
-            return new ReverseProxyClientIPAddressRule(new IPAddressRule(new IPAddressRangeRule(rule, cidrs), ips), allowedClientIPAddresses, "Cf-Connecting-IP");
+            return new ReverseProxyClientIPAddressRule(new IPAddressRule(new IPAddressRangeRule(rule, cidrs), ips), allowedClientIPAddresses, "CF-Connecting-IP");
+        }
+
+        /// <summary>
+        /// Configures the Firewall to allow requests from IP addresses as long as they are accessing a specific hostname. E.g. internal access to staging url
+        /// </summary>
+        /// <param name="rule">Base rule which gets validated when the client ip or hostname are not valid.</param>
+        /// <param name="allowedClientIPAddresses">The list of valid client ip addresses</param>
+        /// <param name="hostNamePartial">part of the hostname to check e.g. -staging.azurewebsites.net</param>
+        public static IFirewallRule ExceptForHostnameFromClientIPs(
+            this IFirewallRule rule,
+            List<IPAddress> allowedClientIPAddresses,
+            string hostNamePartial)
+        {
+            return new HostnameSpecificIPAddressRule(rule, allowedClientIPAddresses, hostNamePartial);
         }
 
 
         /// <summary>
-        /// Configures the Firewall to allow requests from IP addresses which belong to Cloudflare.
+        /// Configures the Firewall to allow requests from IP addresses proxied through Cloudflare.
         /// </summary>
-        /// <param name="rule">Base rule which gets validated when the request did not come from Cloudflare.</param>
+        /// <param name="rule">Base rule which gets validated when the request did not come from Cloudflare or the client ip is not valid.</param>
         /// <param name="allowedClientIPAddressRanges">Address ranges of client ips proxied through cloudflare</param>
         /// <param name="ipv4ListUrl">URL which returns a list of all Cloudflare IPv4 address ranges.</param>
         /// <param name="ipv6ListUrl">URL which returns a list of all Cloudflare IPv6 address ranges.</param>
