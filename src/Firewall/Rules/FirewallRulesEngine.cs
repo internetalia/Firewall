@@ -115,7 +115,7 @@ namespace Firewall
             var helper = new CloudflareHelper(new HttpClient());
             var (ips, cidrs) = helper.GetIPAddressRangesAsync(ipv4ListUrl, ipv6ListUrl).Result;
 
-            return new IPAddressRangeRule(new IPAddressRule(new IPAddressRangeRule(rule, cidrs), ips),allowedClientIPAddressRanges);
+            return new ReverseProxyClientIPAddressRangeRule(new IPAddressRule(new IPAddressRangeRule(rule, cidrs), ips),allowedClientIPAddressRanges, "CF-Connecting-IP");
         }
 
         /// <summary>
