@@ -81,7 +81,10 @@ namespace Firewall
             var helper = new CloudflareHelper(new HttpClient());
             var (ips, cidrs) = helper.GetIPAddressRangesAsync(ipv4ListUrl, ipv6ListUrl).Result;
 
-            return new ReverseProxyClientIPAddressRule(new IPAddressRule(new IPAddressRangeRule(rule, cidrs), ips), allowedClientIPAddresses, "CF-Connecting-IP");
+
+            return new ReverseProxyClientIPAddressRule(rule, cidrs, ips, allowedClientIPAddresses, "CF-Connecting-IP");
+
+//            return new ReverseProxyClientIPAddressRule(new IPAddressRule(new IPAddressRangeRule(rule, cidrs), ips), allowedClientIPAddresses, "CF-Connecting-IP");
         }
 
         /// <summary>
@@ -115,7 +118,9 @@ namespace Firewall
             var helper = new CloudflareHelper(new HttpClient());
             var (ips, cidrs) = helper.GetIPAddressRangesAsync(ipv4ListUrl, ipv6ListUrl).Result;
 
-            return new ReverseProxyClientIPAddressRangeRule(new IPAddressRule(new IPAddressRangeRule(rule, cidrs), ips),allowedClientIPAddressRanges, "CF-Connecting-IP");
+            return new ReverseProxyClientIPAddressRangeRule(rule, cidrs, ips, allowedClientIPAddressRanges, "CF-Connecting-IP");
+
+
         }
 
         /// <summary>

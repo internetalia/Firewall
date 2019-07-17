@@ -11,17 +11,22 @@ namespace Firewall
     public sealed class ReverseProxyClientIPAddressRule : IFirewallRule
     {
         private readonly IFirewallRule _nextRule;
-        private readonly IList<IPAddress> _ipAddresses;
+        private readonly IList<IPAddress> _reverseProxyIPAddresses;
+        private readonly List<IPAddress> _allowedClientIPAddresses;
         private readonly string _reverseProxyHeader;
+        private readonly IList<CIDRNotation> _reverseProxyCIDRs;
 
         /// <summary>
         /// Initialises a new instance of <see cref="IPAddressRule"/>.
         /// </summary>
-        public ReverseProxyClientIPAddressRule(IFirewallRule nextRule, IList<IPAddress> ipAddresses, string reverseProxyHeader)
+        public ReverseProxyClientIPAddressRule(IFirewallRule nextRule, IList<CIDRNotation> cidrs, IList<IPAddress> ipAddresses, List<IPAddress> allowedClientIPAddresses, string reverseProxyHeader)
         {
             _nextRule = nextRule ?? throw new ArgumentNullException(nameof(nextRule));
-            _ipAddresses = ipAddresses ?? throw new ArgumentNullException(nameof(ipAddresses));
+            _reverseProxyIPAddresses = ipAddresses ?? throw new ArgumentNullException(nameof(ipAddresses));
+            this._allowedClientIPAddresses = allowedClientIPAddresses;
             _reverseProxyHeader = reverseProxyHeader;
+            _reverseProxyCIDRs = cidrs;
+
         }
 
         /// <summary>
@@ -34,36 +39,58 @@ namespace Firewall
             if (IPAddress.TryParse(context.Request.Headers[_reverseProxyHeader], out remoteIpAddress))
             {
 
-                var (isAllowed, ip) = MatchesAnyIPAddress(remoteIpAddress);
+                var (isClientIPAllowed, ip) = MatchesAnyIPAddress(remoteIpAddress,_allowedClientIPAddresses);
+
+
+                var (isReversProxyIPValid, _) = MatchesAnyIPAddress(context.Connection.RemoteIpAddress, _reverseProxyIPAddresses); // the ip addresses of the reverse proxy
+                var (isReversProxyIPInCIDR, _) = MatchesAnyIPAddressRange(context.Connection.RemoteIpAddress, _reverseProxyCIDRs); // the ip addresses of the reverse proxy
 
                 context.LogDebug(
-                    typeof(ReverseProxyClientIPAddressRule),
-                    isAllowed,
-                    isAllowed
+                    typeof(IPAddressRule),
+                    isClientIPAllowed,
+                    isClientIPAllowed
                         ? "it matched '{ipAddress}'"
                         : "it didn't match any known IP address",
                     ip);
-                //by default the reverse proxy rule will match the client ip is valid AND check the reverse proxy ip is valid
-                return isAllowed && _nextRule.IsAllowed(context);
+
+                return (isClientIPAllowed && (isReversProxyIPValid || isReversProxyIPInCIDR)) || _nextRule.IsAllowed(context);
+
+
             }
             else {
                 context.Log(Microsoft.Extensions.Logging.LogLevel.Error,
                     typeof(ReverseProxyClientIPAddressRule),
-                       "Invalid reverse proxy header '{_reverseProxyHeader}' or unable to parse remote ip ",
+                       "Invalid reverse proxy header '{_reverseProxyHeader}' or unable to parse remote ip : " + context.Request.Headers[_reverseProxyHeader],
                     _reverseProxyHeader);
-                return false || _nextRule.IsAllowed(context);
+                return false;
             }
             
         }
 
-        private (bool, IPAddress) MatchesAnyIPAddress(IPAddress remoteIpAddress)
+        private (bool, IPAddress) MatchesAnyIPAddress(IPAddress remoteIpAddress, IList<IPAddress> allowList)
         {
-            if (_ipAddresses != null && _ipAddresses.Count > 0)
-                foreach (var ip in _ipAddresses)
+            //if an ip address is supplied it must match for this rule to pass
+            if (allowList != null && allowList.Count > 0)
+                foreach (var ip in allowList)
                     if (ip.IsEqualTo(remoteIpAddress))
                         return (true, ip);
 
+                return (false, null);
+
+        }
+
+
+        private (bool, CIDRNotation) MatchesAnyIPAddressRange(IPAddress remoteIpAddress, IList<CIDRNotation> reverseProxyCIDRs)
+        {
+
+            //if an ip address is supplied it must match for this rule to pass
+            if (reverseProxyCIDRs != null && reverseProxyCIDRs.Count > 0)
+                foreach (var cidr in reverseProxyCIDRs)
+                    if (cidr.Contains(remoteIpAddress))
+                        return (true, cidr);
+
             return (false, null);
+           
         }
     }
 }
